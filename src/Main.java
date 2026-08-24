@@ -11,11 +11,21 @@ public class Main {
     public static void main(String[] args) {
         int[] arr = generateRandomArray(10000, 10000);
 
-        timeSort("Bubble Sort", new BubbleSort(), arr.clone());
-        timeSort("Insertion Sort", new InsertionSort(), arr.clone());
-        timeSort("Selection Sort", new SelectionSort(), arr.clone());
-        timeSort("Merge Sort", new MergeSort(), arr.clone());
-        timeSort("Quick Sort", new QuickSort(), arr.clone());
+        System.out.println("Sort");
+
+        timeSort("Bubble Sort", new BubbleSort(), arr.clone(), false);
+        timeSort("Insertion Sort", new InsertionSort(), arr.clone(), false);
+        timeSort("Selection Sort", new SelectionSort(), arr.clone(), false);
+        timeSort("Merge Sort", new MergeSort(), arr.clone(), false);
+        timeSort("Quick Sort", new QuickSort(), arr.clone(), false);
+
+        System.out.println("Reverse Sort"); 
+        
+        timeSort("Bubble Sort (Reverse)", new BubbleSort(), arr.clone(), true);
+        timeSort("Insertion Sort (Reverse)", new InsertionSort(), arr.clone(), true);
+        timeSort("Selection Sort (Reverse)", new SelectionSort(), arr.clone(), true);
+        timeSort("Merge Sort (Reverse)", new MergeSort(), arr.clone(), true);
+        timeSort("Quick Sort (Reverse)", new QuickSort(), arr.clone(), true);
     }
 
     private static int[] generateRandomArray(int size, int bound) {
@@ -27,9 +37,13 @@ public class Main {
         return arr;
     }
 
-    private static void timeSort(String label, Sorter sorter, int[] arr) {
+    private static void timeSort(String label, Sorter sorter, int[] arr, boolean reverse) {
         long startTime = System.nanoTime();
-        sorter.sort(arr);
+        if (reverse) {
+            sorter.reverseSort(arr);
+        } else {
+            sorter.sort(arr);
+        }
         long endTime = System.nanoTime();
         System.out.println(label + " Time: " + (endTime - startTime) + " nanoseconds");
     }
