@@ -27,12 +27,12 @@ import alg.Sorter;
 public class BenchmarkRunner {
 
     // Matches the 50 "Trial N" columns already in Random/Sort/ReverseSort_Dataset.xlsx
-    private static final int TRIALS = 50;
+    private static final int TRIALS = 1;
 
     // This run writes to the workbook set for 100-element arrays.
-    private static final int[] INPUT_SIZES = { 100 };
+    private static final int[] INPUT_SIZES = { 100000 };
 
-    private static final String EXCEL_DIR = "excel\\100(n)";
+    private static final String EXCEL_DIR = "excel\\100000(n)";
 
     public static void main(String[] args) throws IOException {
         Map<String, Sorter> algorithms = new LinkedHashMap<>();

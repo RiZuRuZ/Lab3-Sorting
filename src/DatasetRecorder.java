@@ -20,7 +20,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *
  * Files expected under excelDir (headers already present in each):
  *   RAW_Dataset.xlsx        -> Algorithm | Input Size(n) | Trial 1..N
- *   AVG_Sort_Dataset.xlsx   -> InputSize(n) | BubbleSort | InsertionSort | SelectionSort | MergeSort | QuickSort
+ *   AVG_Sort_Dataset.xlsx   -> InputSize(n) | ascending algorithm averages | reverse algorithm averages
  *   Random_Dataset.xlsx     -> Trial 1..N   (each column = the raw generated array for that trial)
  *   Sort_Dataset.xlsx       -> Trial 1..N   (each column = that trial's array sorted ascending)
  *   ReverseSort_Dataset.xlsx-> Trial 1..N   (each column = that trial's array sorted descending)
@@ -35,13 +35,17 @@ public class DatasetRecorder implements Closeable {
     private static final String SORT_FILE = "Sort_Dataset.xlsx";
     private static final String REVERSE_SORT_FILE = "ReverseSort_Dataset.xlsx";
 
-    // Column order/labels used in AVG_Sort_Dataset.xlsx (must match the algorithm's
-    // base name, i.e. without a trailing " (Reverse)").
+        // Column order/labels used in AVG_Sort_Dataset.xlsx. These must match the
+        // labels recorded in RAW_Dataset.xlsx.
     private static final String[] AVG_ALGORITHM_HEADERS = {
-            "BubbleSort ", "InsertionSort", "SelectionSort", "MergeSort", "QuickSort"
+            "BubbleSort", "InsertionSort", "SelectionSort", "MergeSort", "QuickSort",
+            "BubbleSort (Reverse)", "InsertionSort (Reverse)", "SelectionSort (Reverse)",
+            "MergeSort (Reverse)", "QuickSort (Reverse)"
     };
     private static final String[] AVG_ALGORITHM_KEYS = {
             "Bubble Sort", "Insertion Sort", "Selection Sort", "Merge Sort", "Quick Sort"
+            , "Bubble Sort (Reverse)", "Insertion Sort (Reverse)", "Selection Sort (Reverse)",
+            "Merge Sort (Reverse)", "Quick Sort (Reverse)"
     };
 
     private final File excelDir;
@@ -120,9 +124,7 @@ public class DatasetRecorder implements Closeable {
     /**
      * Recomputes AVG_Sort_Dataset.xlsx from whatever is currently in RAW_Dataset.xlsx.
      * Averages every "Trial N" cell found on each Algorithm/Input Size row.
-     * Only the ascending ("BubbleSort") rows are averaged into AVG_Sort_Dataset,
-     * since that file has no "(Reverse)" column of its own; reverse-sort rows
-     * are matched by stripping the " (Reverse)" suffix before averaging.
+    * Ascending and reverse-sort rows are averaged into separate columns.
      */
     public void computeAverages() {
         // size -> algorithmKey -> running average data
@@ -154,12 +156,9 @@ public class DatasetRecorder implements Closeable {
                 continue;
             }
 
-                    if (algLabel.endsWith("(Reverse)")) {
-                    continue;
-                    }
-                    String algKey = algLabel.trim();
-                    averages.computeIfAbsent(size, k -> new LinkedHashMap<>())
-                        .put(algKey, sum / count);
+                        String algKey = algLabel.trim();
+                        averages.computeIfAbsent(size, k -> new LinkedHashMap<>())
+                            .put(algKey, sum / count);
         }
 
         for (Map.Entry<Integer, Map<String, Double>> sizeEntry : averages.entrySet()) {
