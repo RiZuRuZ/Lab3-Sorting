@@ -91,6 +91,24 @@ public class DatasetRecorder implements Closeable {
 
     // ---------- public recording API ----------
 
+    /**
+     * Looks at the "Trial N" header columns already present across all 4 files
+     * and returns the next unused trial number (existing max + 1, or 1 if empty).
+     * Call this once after opening, then start your trial loop from this number
+     * so re-running the program APPENDS new trials instead of overwriting old ones.
+     *
+     * Example: files already have Trial 1, Trial 2 -> this returns 3, so the next
+     * run fills in Trial 3, Trial 4, ... instead of rewriting Trial 1, Trial 2.
+     */
+    public int getNextTrialNumber() {
+        int max = 0;
+        max = Math.max(max, maxTrialInHeader(randomSheet, 0));
+        max = Math.max(max, maxTrialInHeader(sortSheet, 0));
+        max = Math.max(max, maxTrialInHeader(reverseSortSheet, 0));
+        max = Math.max(max, maxTrialInHeader(rawSheet, 2));
+        return max + 1;
+    }
+
     /** Records the raw generated array for this trial into Random_Dataset.xlsx. */
     public void recordRandomArray(int trial, int[] arr) {
         writeArrayColumn(randomSheet, trial, arr);
@@ -312,6 +330,34 @@ public class DatasetRecorder implements Closeable {
             }
             row.createCell(col).setCellValue(arr[i]);
         }
+    }
+
+    /** Scans a sheet's header row (from startCol onward) for "Trial N" cells and returns the max N found (0 if none). */
+    private int maxTrialInHeader(Sheet sheet, int startCol) {
+        Row header = sheet.getRow(0);
+        if (header == null) {
+            return 0;
+        }
+        int max = 0;
+        int lastCol = header.getLastCellNum();
+        for (int c = startCol; c < lastCol; c++) {
+            String val = getStringCell(header.getCell(c));
+            if (val == null) {
+                continue;
+            }
+            val = val.trim();
+            if (val.regionMatches(true, 0, "Trial", 0, 5)) {
+                try {
+                    int n = Integer.parseInt(val.substring(5).trim());
+                    if (n > max) {
+                        max = n;
+                    }
+                } catch (NumberFormatException ignored) {
+                    // header cell wasn't "Trial <number>", skip it
+                }
+            }
+        }
+        return max;
     }
 
     private static String getStringCell(Cell cell) {

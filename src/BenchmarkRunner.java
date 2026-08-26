@@ -26,10 +26,15 @@ import alg.Sorter;
  */
 public class BenchmarkRunner {
 
-    // Matches the 50 "Trial N" columns already in Random/Sort/ReverseSort_Dataset.xlsx
-    private static final int TRIALS = 1;
+    // Manual switch:
+    //   true  -> append new trials after whatever is already in the files
+    //   false -> old behavior, always start from Trial 1 (overwrites existing trials)
+    private static final boolean APPEND = false;
 
-    // This run writes to the workbook set for 100-element arrays.
+    // How many trials to run this time (new trials if APPEND=true, total trials if APPEND=false).
+    private static final int NUM_NEW_TRIALS = 10;
+
+    // This run writes to the workbook set for n-element arrays.
     private static final int[] INPUT_SIZES = { 100000 };
 
     private static final String EXCEL_DIR = "excel\\100000(n)";
@@ -43,8 +48,15 @@ public class BenchmarkRunner {
         algorithms.put("Quick Sort", new QuickSort());
 
         try (DatasetRecorder recorder = new DatasetRecorder(EXCEL_DIR)) {
+            // APPEND=true  -> continue after the last existing "Trial N" column
+            // APPEND=false -> start over from Trial 1 (old behavior)
+            int startTrial = APPEND ? recorder.getNextTrialNumber() : 1;
+            int endTrial = startTrial + NUM_NEW_TRIALS - 1;
+            System.out.println((APPEND ? "Appending" : "Overwriting from start") 
+                    + " - Trial " + startTrial + " through Trial " + endTrial);
+
             for (int size : INPUT_SIZES) {
-                for (int trial = 1; trial <= TRIALS; trial++) {
+                for (int trial = startTrial; trial <= endTrial; trial++) {
                     int[] original = generateRandomArray(size, size);
 
                     recorder.recordRandomArray(trial, original);
@@ -62,7 +74,7 @@ public class BenchmarkRunner {
                         recorder.recordRawTiming(name + " (Reverse)", size, trial, descNanos);
                     }
 
-                    System.out.println("Size " + size + ", trial " + trial + "/" + TRIALS + " done.");
+                    System.out.println("Size " + size + ", trial " + trial + "/" + endTrial + " done.");
                 }
             }
 
