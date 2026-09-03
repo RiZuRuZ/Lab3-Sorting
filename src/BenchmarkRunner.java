@@ -46,6 +46,11 @@ public class BenchmarkRunner {
     // Fixed base seed so every (size, trial) pair always produces the same random array.
     private static final long BASE_SEED = 42;
 
+    // How many extra untimed sort() + reverseSort() calls to run per algorithm,
+    // BEFORE Trial 1, so the JVM JIT-compiles hot methods and Trial 1 is measured
+    // at the same "warmed up" state as every later trial (removes JIT warm-up bias).
+    private static final int WARMUP_ITERATIONS = 5;
+
     public static void main(String[] args) throws IOException {
         Map<String, Sorter> algorithms = new LinkedHashMap<>();
         algorithms.put("Bubble Sort", new BubbleSort());
@@ -63,6 +68,8 @@ public class BenchmarkRunner {
                     + " - Trial " + startTrial + " through Trial " + endTrial);
 
             for (int size : INPUT_SIZES) {
+                warmUp(algorithms, size);
+
                 for (int trial = startTrial; trial <= endTrial; trial++) {
                     int[] original = generateRandomArray(size, trial);
                     int[] ascendingInput = sortedCopyAscending(original);
@@ -93,6 +100,28 @@ public class BenchmarkRunner {
         }
 
         System.out.println("All excel files updated in " + EXCEL_DIR + "/");
+    }
+
+    /**
+     * Runs every algorithm WARMUP_ITERATIONS times (sort + reverseSort) on throwaway
+     * arrays, without recording anything, so the JVM interpreter -> JIT-compiled
+     * transition happens BEFORE Trial 1 is timed. Uses negative "trial" numbers in
+     * the seed so warm-up arrays never collide with the real trial arrays (1..N).
+     */
+    private static void warmUp(Map<String, Sorter> algorithms, int size) {
+        System.out.println("Warming up JVM for size " + size + " (" + WARMUP_ITERATIONS
+                + " untimed iterations per algorithm)...");
+        for (Map.Entry<String, Sorter> entry : algorithms.entrySet()) {
+            Sorter sorter = entry.getValue();
+            for (int i = 1; i <= WARMUP_ITERATIONS; i++) {
+                int[] warmupOriginal = generateRandomArray(size, -i);
+                int[] warmupAscending = sortedCopyAscending(warmupOriginal);
+                sorter.sort(warmupOriginal.clone());
+                sorter.sort(warmupAscending.clone());
+                sorter.reverseSort(warmupAscending.clone());
+            }
+        }
+        System.out.println("Warm-up complete.");
     }
 
     /** seed = BASE_SEED + size*1000 + trial -> same (size, trial) always gives the same array. */
