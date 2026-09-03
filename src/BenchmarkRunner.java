@@ -34,11 +34,11 @@ public class BenchmarkRunner {
     private static final boolean APPEND = false;
 
     // How many trials to run this time (new trials if APPEND=true, total trials if APPEND=false).
-    private static final int NUM_NEW_TRIALS = 10;
+    private static final int NUM_NEW_TRIALS = 20;
 
     // This run writes to the workbook set for n-element arrays.
-    private static final int CURRENT_N = 100;
-    
+    private static final int CURRENT_N = 1000;
+
     private static final int[] INPUT_SIZES = { CURRENT_N };
 
     private static final String EXCEL_DIR = "excel\\" + CURRENT_N + "(n)";
