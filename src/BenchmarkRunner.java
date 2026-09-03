@@ -33,6 +33,10 @@ public class BenchmarkRunner {
     //   false -> old behavior, always start from Trial 1 (overwrites existing trials)
     private static final boolean APPEND = false;
 
+    // true -> save every generated random array in RandomValues_Dataset.xlsx
+    // false -> run the benchmark without saving the generated arrays
+    private static final boolean SAVE_RANDOM_DATASET = false;
+
     // How many trials to run this time (new trials if APPEND=true, total trials if APPEND=false).
     private static final int NUM_NEW_TRIALS = 20;
 
@@ -59,7 +63,7 @@ public class BenchmarkRunner {
         algorithms.put("Merge Sort", new MergeSort());
         algorithms.put("Quick Sort", new QuickSort());
 
-        try (DatasetRecorder recorder = new DatasetRecorder(EXCEL_DIR)) {
+        try (DatasetRecorder recorder = new DatasetRecorder(EXCEL_DIR, SAVE_RANDOM_DATASET)) {
             // APPEND=true  -> continue after the last existing "Trial N" column
             // APPEND=false -> start over from Trial 1 (old behavior)
             int startTrial = APPEND ? recorder.getNextTrialNumber() : 1;
@@ -73,6 +77,7 @@ public class BenchmarkRunner {
                 for (int trial = startTrial; trial <= endTrial; trial++) {
                     int[] original = generateRandomArray(size, trial);
                     int[] ascendingInput = sortedCopyAscending(original);
+                    recorder.recordRandomArray(original, trial);
 
                     for (Map.Entry<String, Sorter> entry : algorithms.entrySet()) {
                         String name = entry.getKey();

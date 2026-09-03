@@ -21,7 +21,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *   ReverseSort_Dataset.xlsx  -> Algorithm | Input Size(n) | Trial 1..N | Average
  *                                 (time to DESCENDING-sort an ALREADY-SORTED array - worst case)
  *   RAW_Dataset.xlsx          -> Algorithm | Case | Input Size(n) | Trial 1..N
- *                                 (master file combining all 3 cases above)
+ *                                 | Average (master file combining all 3 cases above)
+ *   RandomValues_Dataset.xlsx -> Random Value Index | Trial 1..N
  *   AVG_Random_Dataset.xlsx      -> InputSize(n) | BubbleSort | InsertionSort | SelectionSort | MergeSort | QuickSort
  *   AVG_Sort_Dataset.xlsx        -> same columns, pivoted from Sort_Dataset.xlsx
  *   AVG_ReverseSort_Dataset.xlsx -> same columns, pivoted from ReverseSort_Dataset.xlsx
@@ -34,6 +35,7 @@ public class DatasetRecorder implements Closeable {
     private static final String SORT_FILE = "Sort_Dataset.xlsx";
     private static final String REVERSE_SORT_FILE = "ReverseSort_Dataset.xlsx";
     private static final String RAW_FILE = "RAW_Dataset.xlsx";
+    private static final String RANDOM_VALUES_FILE = "RandomValues_Dataset.xlsx";
     private static final String AVG_RANDOM_FILE = "AVG_Random_Dataset.xlsx";
     private static final String AVG_SORT_FILE = "AVG_Sort_Dataset.xlsx";
     private static final String AVG_REVERSE_SORT_FILE = "AVG_ReverseSort_Dataset.xlsx";
@@ -60,6 +62,9 @@ public class DatasetRecorder implements Closeable {
     private final Workbook rawWb;
     private final Sheet rawSheet;
 
+    private final Workbook randomValuesWb;
+    private final Sheet randomValuesSheet;
+
     private final Workbook avgRandomWb;
     private final Sheet avgRandomSheet;
 
@@ -70,6 +75,10 @@ public class DatasetRecorder implements Closeable {
     private final Sheet avgReverseSortSheet;
 
     public DatasetRecorder(String excelDirPath) throws IOException {
+        this(excelDirPath, true);
+    }
+
+    public DatasetRecorder(String excelDirPath, boolean saveRandomDataset) throws IOException {
         this.excelDir = new File(excelDirPath);
         if (!excelDir.exists()) {
             excelDir.mkdirs();
@@ -90,6 +99,15 @@ public class DatasetRecorder implements Closeable {
         rawWb = openOrCreate(RAW_FILE);
         rawSheet = firstSheet(rawWb);
         ensureRawHeader(rawSheet);
+
+        if (saveRandomDataset) {
+            randomValuesWb = openOrCreate(RANDOM_VALUES_FILE);
+            randomValuesSheet = firstSheet(randomValuesWb);
+            ensureRandomValuesHeader(randomValuesSheet);
+        } else {
+            randomValuesWb = null;
+            randomValuesSheet = null;
+        }
 
         avgRandomWb = openOrCreate(AVG_RANDOM_FILE);
         avgRandomSheet = firstSheet(avgRandomWb);
@@ -118,6 +136,7 @@ public class DatasetRecorder implements Closeable {
         max = Math.max(max, maxTrialInHeader(sortSheet, 2));
         max = Math.max(max, maxTrialInHeader(reverseSortSheet, 2));
         max = Math.max(max, maxTrialInHeader(rawSheet, 3));
+        max = Math.max(max, maxTrialInHeader(randomValuesSheet, 1));
         return max + 1;
     }
 
@@ -139,6 +158,23 @@ public class DatasetRecorder implements Closeable {
         rawRow.createCell(rawCol).setCellValue(timeNanos);
     }
 
+    /** Stores one generated array vertically, with one trial per column. */
+    public void recordRandomArray(int[] values, int trial) {
+        if (randomValuesSheet == null) {
+            return;
+        }
+        int col = 1 + (trial - 1); // 0=Random Value Index, 1=Trial 1, ...
+        ensureTrialHeader(randomValuesSheet, trial, col);
+        for (int i = 0; i < values.length; i++) {
+            Row row = randomValuesSheet.getRow(i + 1);
+            if (row == null) {
+                row = randomValuesSheet.createRow(i + 1);
+                row.createCell(0).setCellValue(i + 1);
+            }
+            row.createCell(col).setCellValue(values[i]);
+        }
+    }
+
     /**
      * Recomputes everything derived from the raw trial data:
      *  - the "Average" column appended after the last Trial column in each case file
@@ -148,14 +184,18 @@ public class DatasetRecorder implements Closeable {
         computeCaseAverages(randomSheet, avgRandomSheet);
         computeCaseAverages(sortSheet, avgSortSheet);
         computeCaseAverages(reverseSortSheet, avgReverseSortSheet);
+        computeRawAverages();
     }
 
-    /** Writes all 7 workbooks back to disk. Call this once after recording everything. */
+    /** Writes all workbooks back to disk. Call this once after recording everything. */
     public void saveAll() throws IOException {
         saveWorkbook(randomWb, RANDOM_FILE);
         saveWorkbook(sortWb, SORT_FILE);
         saveWorkbook(reverseSortWb, REVERSE_SORT_FILE);
         saveWorkbook(rawWb, RAW_FILE);
+        if (randomValuesWb != null) {
+            saveWorkbook(randomValuesWb, RANDOM_VALUES_FILE);
+        }
         saveWorkbook(avgRandomWb, AVG_RANDOM_FILE);
         saveWorkbook(avgSortWb, AVG_SORT_FILE);
         saveWorkbook(avgReverseSortWb, AVG_REVERSE_SORT_FILE);
@@ -167,6 +207,9 @@ public class DatasetRecorder implements Closeable {
         sortWb.close();
         reverseSortWb.close();
         rawWb.close();
+        if (randomValuesWb != null) {
+            randomValuesWb.close();
+        }
         avgRandomWb.close();
         avgSortWb.close();
         avgReverseSortWb.close();
@@ -239,6 +282,16 @@ public class DatasetRecorder implements Closeable {
         }
         if (header.getCell(2) == null) {
             header.createCell(2).setCellValue("Input Size(n)");
+        }
+    }
+
+    private void ensureRandomValuesHeader(Sheet sheet) {
+        Row header = sheet.getRow(0);
+        if (header == null) {
+            header = sheet.createRow(0);
+        }
+        if (header.getCell(0) == null) {
+            header.createCell(0).setCellValue("Random Value Index");
         }
     }
 
@@ -420,8 +473,69 @@ public class DatasetRecorder implements Closeable {
         }
     }
 
+    private void computeRawAverages() {
+        Row header = rawSheet.getRow(0);
+        if (header == null) {
+            return;
+        }
+        int maxTrialCol = 2;
+        int oldAvgCol = -1;
+        for (int c = 3; c < header.getLastCellNum(); c++) {
+            String label = getStringCell(header.getCell(c));
+            if (label == null) {
+                continue;
+            }
+            label = label.trim();
+            if (label.equalsIgnoreCase("Average")) {
+                oldAvgCol = c;
+            } else if (label.regionMatches(true, 0, "Trial", 0, 5)) {
+                maxTrialCol = Math.max(maxTrialCol, c);
+            }
+        }
+        int newAvgCol = maxTrialCol + 1;
+        if (oldAvgCol != -1 && oldAvgCol != newAvgCol) {
+            Cell oldHeaderCell = header.getCell(oldAvgCol);
+            if (oldHeaderCell != null) {
+                header.removeCell(oldHeaderCell);
+            }
+            for (int r = 1; r <= rawSheet.getLastRowNum(); r++) {
+                Row row = rawSheet.getRow(r);
+                if (row != null && row.getCell(oldAvgCol) != null) {
+                    row.removeCell(row.getCell(oldAvgCol));
+                }
+            }
+        }
+        Cell avgHeaderCell = header.getCell(newAvgCol);
+        if (avgHeaderCell == null) {
+            avgHeaderCell = header.createCell(newAvgCol);
+        }
+        avgHeaderCell.setCellValue("Average");
+
+        for (int r = 1; r <= rawSheet.getLastRowNum(); r++) {
+            Row row = rawSheet.getRow(r);
+            if (row == null) {
+                continue;
+            }
+            double sum = 0;
+            int count = 0;
+            for (int c = 3; c <= maxTrialCol; c++) {
+                Double value = getDoubleCell(row.getCell(c));
+                if (value != null) {
+                    sum += value;
+                    count++;
+                }
+            }
+            if (count > 0) {
+                row.createCell(newAvgCol).setCellValue(sum / count);
+            }
+        }
+    }
+
     /** Scans a sheet's header row (from startCol onward) for "Trial N" cells and returns the max N found (0 if none). */
     private int maxTrialInHeader(Sheet sheet, int startCol) {
+        if (sheet == null) {
+            return 0;
+        }
         Row header = sheet.getRow(0);
         if (header == null) {
             return 0;

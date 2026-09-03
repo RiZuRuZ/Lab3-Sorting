@@ -5,6 +5,7 @@ alg\MergeSort.class
 alg\InsertionSort.class
 alg\Sorter.class
 DatasetRecorder$Case.class
+RandomArrayTest.class
 alg\BubbleSort.class
 alg\QuickSort.class
 DatasetRecorder.class
