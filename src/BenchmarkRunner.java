@@ -28,6 +28,8 @@ import alg.Sorter;
  */
 public class BenchmarkRunner {
 
+    private enum TimeUnit { NS, MS }
+
     // Manual switch:
     //   true  -> append new trials after whatever is already in the files
     //   false -> old behavior, always start from Trial 1 (overwrites existing trials)
@@ -41,7 +43,7 @@ public class BenchmarkRunner {
     private static final int NUM_NEW_TRIALS = 20;
 
     // This run writes to the workbook set for n-element arrays.
-    private static final int CURRENT_N = 1000;
+    private static final int CURRENT_N = 5000;
 
     private static final int[] INPUT_SIZES = { CURRENT_N };
 
@@ -54,6 +56,9 @@ public class BenchmarkRunner {
     // BEFORE Trial 1, so the JVM JIT-compiles hot methods and Trial 1 is measured
     // at the same "warmed up" state as every later trial (removes JIT warm-up bias).
     private static final int WARMUP_ITERATIONS = 5;
+
+    // Choose the timing unit stored in the Excel files: NS or MS.
+    private static final TimeUnit TIME_UNIT = TimeUnit.NS;
 
     public static void main(String[] args) throws IOException {
         Map<String, Sorter> algorithms = new LinkedHashMap<>();
@@ -84,16 +89,16 @@ public class BenchmarkRunner {
                         Sorter sorter = entry.getValue();
 
                         // RANDOM case: ascending-sort a fresh copy of the random array
-                        long randomNanos = timeSort(sorter, original.clone(), false);
-                        recorder.recordTiming(DatasetRecorder.Case.RANDOM, name, size, trial, randomNanos);
+                        double randomTime = formatElapsed(timeSort(sorter, original.clone(), false));
+                        recorder.recordTiming(DatasetRecorder.Case.RANDOM, name, size, trial, randomTime);
 
                         // SORTED case: ascending-sort an array that's already ascending (best case)
-                        long sortedNanos = timeSort(sorter, ascendingInput.clone(), false);
-                        recorder.recordTiming(DatasetRecorder.Case.SORTED, name, size, trial, sortedNanos);
+                        double sortedTime = formatElapsed(timeSort(sorter, ascendingInput.clone(), false));
+                        recorder.recordTiming(DatasetRecorder.Case.SORTED, name, size, trial, sortedTime);
 
                         // REVERSE_SORTED case: descending-sort an array that's already ascending (worst case)
-                        long reverseNanos = timeSort(sorter, ascendingInput.clone(), true);
-                        recorder.recordTiming(DatasetRecorder.Case.REVERSE_SORTED, name, size, trial, reverseNanos);
+                        double reverseTime = formatElapsed(timeSort(sorter, ascendingInput.clone(), true));
+                        recorder.recordTiming(DatasetRecorder.Case.REVERSE_SORTED, name, size, trial, reverseTime);
                     }
 
                     System.out.println("Size " + size + ", trial " + trial + "/" + endTrial + " done.");
@@ -154,5 +159,12 @@ public class BenchmarkRunner {
             sorter.sort(arr);
         }
         return System.nanoTime() - start;
+    }
+
+    private static double formatElapsed(long elapsedNanos) {
+        if (TIME_UNIT == TimeUnit.MS) {
+            return Math.round(elapsedNanos / 1_000_000.0 * 10_000.0) / 10_000.0;
+        }
+        return elapsedNanos;
     }
 }

@@ -141,21 +141,21 @@ public class DatasetRecorder implements Closeable {
     }
 
     /**
-     * Records one timing (in nanoseconds) for the given case, algorithm, size and trial.
+        * Records one timing for the given case, algorithm, size and trial.
      * Writes into the matching case file (Random/Sort/ReverseSort_Dataset.xlsx) AND into
      * RAW_Dataset.xlsx (the combined master file).
      */
-    public void recordTiming(Case caseType, String algorithmLabel, int inputSize, int trial, long timeNanos) {
+    public void recordTiming(Case caseType, String algorithmLabel, int inputSize, int trial, double time) {
         Sheet caseSheet = sheetForCase(caseType);
         Row caseRow = findOrCreateCaseRow(caseSheet, algorithmLabel, inputSize);
         int col = 2 + (trial - 1); // 0=Algorithm, 1=Input Size(n), 2=Trial1, ...
         ensureTrialHeader(caseSheet, trial, col);
-        caseRow.createCell(col).setCellValue(timeNanos);
+        caseRow.createCell(col).setCellValue(time);
 
         Row rawRow = findOrCreateRawRow(algorithmLabel, caseLabel(caseType), inputSize);
         int rawCol = 3 + (trial - 1); // 0=Algorithm, 1=Case, 2=Input Size(n), 3=Trial1, ...
         ensureTrialHeader(rawSheet, trial, rawCol);
-        rawRow.createCell(rawCol).setCellValue(timeNanos);
+        rawRow.createCell(rawCol).setCellValue(time);
     }
 
     /** Stores one generated array vertically, with one trial per column. */

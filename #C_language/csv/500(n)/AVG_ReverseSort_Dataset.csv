@@ -1,0 +1,2 @@
+InputSize(n),BubbleSort,InsertionSort,SelectionSort,MergeSort,QuickSort
+500,660380.0,43260.0,315170.0,34800.0,34685.0

@@ -6,6 +6,7 @@ alg\InsertionSort.class
 alg\Sorter.class
 DatasetRecorder$Case.class
 RandomArrayTest.class
+BenchmarkRunner$TimeUnit.class
 alg\BubbleSort.class
 alg\QuickSort.class
 DatasetRecorder.class
